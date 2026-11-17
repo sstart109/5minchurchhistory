@@ -1,13 +1,12 @@
 {
-  "name": "gty-sermon-scraper",
+  "name": "5minchurchhistory-episode-archiver",
   "version": "1.0.0",
-  "description": "A polite, elegant sermon web scraper and dashboard for gty.org",
-  "main": "server.js",
+  "description": "Polite crawler and searchable index for every episode of 5 Minutes in Church History",
+  "main": "crawl_episodes.js",
   "scripts": {
-    "start": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.19.2"
+    "crawl": "node crawl_episodes.js",
+    "crawl:no-audio": "node crawl_episodes.js --no-audio",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=18.0.0"

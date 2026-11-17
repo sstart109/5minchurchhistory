@@ -5,3 +5,7 @@ sermons_cache.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+archive/
+episodes_cache.json
+episodes.html
+episodes_site.html

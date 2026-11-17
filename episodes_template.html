@@ -1,0 +1,186 @@
+<title>Church History Episode Finder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: narrow reading column; sticky search bar; year strip as a to-scale histogram; one row per episode. */
+  :root {
+    --bg: #f4f5f8; --surface: #ffffff; --fg: #1c1d25; --muted: #5d6272; --line: #dde0e8;
+    --accent: #5b3a8c; --accent-soft: #ece6f6; --mark: #f5e6a3;
+    --display: 'Alegreya', Georgia, serif; --body: 'Inter', system-ui, sans-serif; --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #14151b; --surface: #1c1e27; --fg: #e8e9ef; --muted: #9ba1b2; --line: #2d303c;
+    --accent: #bba0e8; --accent-soft: #2b2339; --mark: #5e4f1c; color-scheme: dark; } }
+  :root[data-theme="dark"] {
+    --bg: #14151b; --surface: #1c1e27; --fg: #e8e9ef; --muted: #9ba1b2; --line: #2d303c;
+    --accent: #bba0e8; --accent-soft: #2b2339; --mark: #5e4f1c; color-scheme: dark; }
+
+  body { background: var(--bg); color: var(--fg); font: 15px/1.6 var(--body); margin: 0; }
+  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+  .wrap { max-width: 860px; margin: 0 auto; padding-block: 28px 64px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  header { display: grid; gap: 6px; margin-bottom: 18px; }
+  h1 { font: 700 clamp(1.7rem, 4.5vw, 2.4rem)/1.15 var(--display); margin: 0; text-wrap: balance; }
+  h1 em { color: var(--accent); }
+  .sub { color: var(--muted); margin: 0; font-size: 0.92rem; }
+  .sub a { color: inherit; }
+
+  .bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+    display: flex; flex-wrap: wrap; gap: 8px; padding-block: 10px; border-bottom: 1px solid var(--line); }
+  .bar input { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; min-width: 0; }
+  #q { flex: 1 1 260px; }
+  .dates { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; color: var(--muted); font-size: 0.85rem; }
+  .dates input { font-family: var(--mono); font-size: 0.85rem; }
+  button { font: inherit; cursor: pointer; color: var(--accent); background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; }
+  button:hover { background: var(--accent-soft); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .years { display: flex; gap: 3px; align-items: flex-end; margin: 16px 0 6px; overflow-x: auto; padding-bottom: 2px; }
+  .yr { flex: 1 0 40px; display: grid; gap: 3px; justify-items: center; border: 0; padding: 0; border-radius: 0; background: none; color: var(--muted); }
+  .yr:hover { background: none; color: var(--fg); }
+  .yr i { display: block; width: 100%; background: var(--accent-soft); border-radius: 3px 3px 0 0; }
+  .yr.on i { background: var(--accent); }
+  .yr.on { color: var(--fg); }
+  .yr span { font: 0.72rem var(--mono); font-variant-numeric: tabular-nums; }
+
+  .count { color: var(--muted); font-size: 0.88rem; margin: 10px 0; font-variant-numeric: tabular-nums; }
+  ol { list-style: none; margin: 0; padding: 0; display: grid; }
+  li { display: grid; grid-template-columns: 7.2rem 1fr; gap: 4px 16px; padding: 16px 0; border-top: 1px solid var(--line); }
+  li > * { min-width: 0; }
+  .date { font: 0.85rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; padding-top: 3px; }
+  .body { display: grid; gap: 6px; }
+  h2 { font: 700 1.2rem/1.3 var(--display); margin: 0; text-wrap: balance; }
+  .desc, .snip { margin: 0; color: var(--muted); font-size: 0.92rem; }
+  .snip { color: var(--fg); }
+  mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 1px; }
+  audio { width: 100%; max-width: 420px; height: 36px; }
+  .links { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.85rem; }
+  .links a { color: var(--accent); }
+  .tag { font-size: 0.75rem; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 0 8px; }
+  details summary { cursor: pointer; color: var(--accent); font-size: 0.88rem; width: fit-content; }
+  .tx { max-width: 65ch; margin-top: 8px; }
+  .tx p { margin: 0 0 0.8em; }
+  #more { margin: 18px auto 0; display: block; }
+  @media (max-width: 560px) { li { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Every episode of <em>5 Minutes in Church History</em></h1>
+    <p class="sub" id="meta"></p>
+    <p class="sub">Unofficial personal index. Audio and transcripts belong to <a href="https://www.ligonier.org/podcasts/5-minutes-in-church-history-with-stephen-nichols" rel="noopener">Ligonier Ministries</a>.</p>
+  </header>
+
+  <div class="bar" role="search">
+    <input id="q" type="search" placeholder="Search titles and transcripts, e.g. Luther Worms" aria-label="Search titles and transcripts">
+    <div class="dates">
+      <label for="from">From</label><input id="from" type="date">
+      <label for="to">to</label><input id="to" type="date">
+      <button id="clear" type="button">Clear</button>
+    </div>
+  </div>
+
+  <div class="years" id="years" aria-label="Episodes per year"></div>
+  <p class="count" id="count" aria-live="polite"></p>
+  <ol id="list"></ol>
+  <button id="more" type="button" hidden>Show more</button>
+</div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+(() => {
+  const D = JSON.parse(document.getElementById('data').textContent);
+  const local = location.protocol === 'file:';
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const reEsc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const fmt = (d) => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  D.forEach((e) => { e.h = (e.t + ' ' + e.s + ' ' + e.x).toLowerCase(); });
+
+  const dates = D.map((e) => e.d).sort();
+  $('meta').textContent = `Stephen Nichols · ${D.length} episodes · ${fmt(dates[0])} to ${fmt(dates[dates.length - 1])} · ${D.filter((e) => e.x).length} with transcripts`;
+
+  // Year histogram: bar heights share one scale (tallest year = 44px).
+  const perYear = {};
+  D.forEach((e) => { const y = e.d.slice(0, 4); perYear[y] = (perYear[y] || 0) + 1; });
+  const years = Object.keys(perYear).sort();
+  const maxY = Math.max(...Object.values(perYear));
+  $('years').innerHTML = years.map((y) =>
+    `<button class="yr" type="button" data-y="${y}" title="${perYear[y]} episodes in ${y}"><i style="height:${Math.round(44 * perYear[y] / maxY)}px"></i><span>${y}</span></button>`).join('');
+
+  let shown = 0, hits = [], words = [], re = null;
+  const PAGE = 40;
+
+  function hl(text) { return re ? esc(text).replace(re, '<mark>$1</mark>') : esc(text); }
+
+  function snippet(e) {
+    if (!words.length || !e.x) return '';
+    const lx = e.x.toLowerCase();
+    const i = lx.indexOf(words[0]);
+    if (i < 0) return '';
+    const a = Math.max(0, lx.lastIndexOf(' ', Math.max(0, i - 90)));
+    const b = Math.min(e.x.length, i + 160);
+    return (a > 0 ? '… ' : '') + hl(e.x.slice(a, b).trim()) + (b < e.x.length ? ' …' : '');
+  }
+
+  function row(e, n) {
+    const audio = local && e.a ? e.a : e.m;
+    const snip = snippet(e);
+    const links = [];
+    if (e.u) links.push(`<a href="${esc(e.u)}" target="_blank" rel="noopener">Ligonier page</a>`);
+    if (local && e.f) links.push(`<a href="${esc(e.f)}">Transcript file</a>`);
+    if (local && e.a) links.push(`<a href="${esc(e.a)}">MP3 file</a>`);
+    if (!e.x) links.push('<span class="tag">Audio only, no transcript</span>');
+    return `<li><time class="date" datetime="${e.d}">${fmt(e.d)}</time><div class="body">
+      <h2>${hl(e.t)}</h2>
+      ${e.s ? `<p class="desc">${hl(e.s)}</p>` : ''}
+      ${snip ? `<p class="snip">${snip}</p>` : ''}
+      ${audio ? `<audio controls preload="none" src="${esc(audio)}"></audio>` : ''}
+      <div class="links">${links.join('')}</div>
+      ${e.x ? `<details data-i="${n}"><summary>Read transcript</summary><div class="tx"></div></details>` : ''}
+    </div></li>`;
+  }
+
+  function more() {
+    const next = hits.slice(shown, shown + PAGE);
+    $('list').insertAdjacentHTML('beforeend', next.map((e, k) => row(e, shown + k)).join(''));
+    shown += next.length;
+    $('more').hidden = shown >= hits.length;
+  }
+
+  function run() {
+    const q = $('q').value.trim().toLowerCase();
+    const from = $('from').value, to = $('to').value;
+    words = q.split(/\s+/).filter(Boolean);
+    re = words.length ? new RegExp('(' + words.map(reEsc).join('|') + ')', 'gi') : null;
+    hits = D.filter((e) => (!from || e.d >= from) && (!to || e.d <= to) && words.every((w) => e.h.includes(w)));
+    $('count').textContent = `${hits.length} of ${D.length} episodes`;
+    document.querySelectorAll('.yr').forEach((b) => b.classList.toggle('on', from === b.dataset.y + '-01-01' && to === b.dataset.y + '-12-31'));
+    $('list').innerHTML = ''; shown = 0; more();
+  }
+
+  // Transcript text is built only when opened, to keep the list light.
+  $('list').addEventListener('toggle', (ev) => {
+    const d = ev.target;
+    if (!d.open || d.dataset.done) return;
+    d.dataset.done = 1;
+    d.querySelector('.tx').innerHTML = hits[+d.dataset.i].x.split(/\n{2,}/).map((p) => `<p>${hl(p)}</p>`).join('');
+  }, true);
+
+  $('years').addEventListener('click', (ev) => {
+    const b = ev.target.closest('.yr'); if (!b) return;
+    const on = b.classList.contains('on');
+    $('from').value = on ? '' : b.dataset.y + '-01-01';
+    $('to').value = on ? '' : b.dataset.y + '-12-31';
+    run();
+  });
+  let t;
+  $('q').addEventListener('input', () => { clearTimeout(t); t = setTimeout(run, 150); });
+  $('from').addEventListener('change', run);
+  $('to').addEventListener('change', run);
+  $('clear').addEventListener('click', () => { $('q').value = $('from').value = $('to').value = ''; run(); });
+  $('more').addEventListener('click', more);
+  run();
+})();
+</script>
