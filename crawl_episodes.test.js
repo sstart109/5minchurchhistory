@@ -1,6 +1,11 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const { cleanText, parseEpisode, parseFeed, mp3Key } = require('./crawl_episodes');
+const { cleanText, parseEpisode, parseFeed, mp3Key, baseName } = require('./crawl_episodes');
+
+test('baseName strips path characters from remote slug and date', () => {
+  assert.strictEqual(baseName({ date: '2013-08-14', slug: '..\\..\\evil/x.y' }), '2013-08-14--evil-x-y');
+  assert.strictEqual(baseName({ date: '2025-08-13', slug: 'happy-12th-anniversary' }), '2025-08-13-happy-12th-anniversary');
+});
 
 test('parseEpisode reads the episode out of __remixContext', () => {
   const ctx = { state: { loaderData: { 'routes/podcasts.$show.$episode': { episode: {

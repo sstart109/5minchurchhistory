@@ -72,7 +72,8 @@ function parseFeed(xml) {
 }
 
 const mp3Key = (u) => (u || '').split('?')[0].split('/').pop().toLowerCase();
-const baseName = (e) => `${e.date}-${e.slug}`;
+// slug and date come from remote data; restrict to safe characters so filenames stay inside archive/.
+const baseName = (e) => `${e.date}-${e.slug}`.toLowerCase().replace(/[^a-z0-9-]+/g, '-');
 
 async function crawlPages(cache) {
   const xml = await get(SITEMAP);
@@ -163,5 +164,5 @@ async function main() {
 
 const PAGE_TEMPLATE = fs.readFileSync(path.join(__dirname, 'episodes_template.html'), 'utf8');
 
-module.exports = { cleanText, parseEpisode, parseFeed, mp3Key };
+module.exports = { cleanText, parseEpisode, parseFeed, mp3Key, baseName };
 if (require.main === module) main().catch((err) => { console.error(err); process.exit(1); });
